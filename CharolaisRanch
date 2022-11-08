@@ -1,0 +1,275 @@
+-- Cleaning up the database for initialization by conditionally dropping tables
+DROP TABLE IF EXISTS SireCalf
+DROP TABLE IF EXISTS DamCalf
+DROP TABLE IF EXISTS Dam
+DROP TABLE IF EXISTS Sire
+DROP TABLE IF EXISTS Cattle
+DROP TABLE IF EXISTS SectionPasture
+DROP TABLE IF EXISTS RanchSection
+
+-- Creating all tables and constraints 
+CREATE TABLE RanchSection(
+SectionId int identity primary key 
+, SectionName varchar(50) NOT NULL
+, SectionNumber varchar(15) UNIQUE NOT NULL
+)
+GO
+CREATE TABLE SectionPasture(
+PastureId int identity primary key
+, Acreage int NOT NULL
+, PastureUse varchar(20) NOT NULL
+, Crop varchar(20)
+, SectionId int FOREIGN KEY REFERENCES RanchSection(SectionId) NOT NULL
+)
+GO
+CREATE TABLE Cattle(
+CattleId int identity primary key
+, RegistrationNumber varchar(20) UNIQUE NOT NULL
+, Breed varchar(15) NOT NULL
+, Gender varchar(10) NOT NULL
+, Pregnant bit
+, DateOfBirth datetime NOT NULL
+, BirthWeight int NOT NULL
+, WeaningWeight int
+, YearlingWeight int
+, HipHeight int NOT NULL
+, TargetValue money
+, PastureID int FOREIGN KEY REFERENCES SectionPasture(PastureId) NOT NULL
+)
+CREATE TABLE Dam(
+DamId int identity primary key
+, CattleId int FOREIGN KEY REFERENCES Cattle(CattleId)
+)
+GO
+CREATE TABLE Sire(
+SireId int identity primary key
+, CattleId int FOREIGN KEY REFERENCES Cattle(CattleId)
+)
+GO
+CREATE TABLE DamCalf(
+DamCalfId int identity primary key
+, DamIdNumber int FOREIGN KEY REFERENCES Dam(DamId) NOT NULL
+, CalfIdNumber int FOREIGN KEY REFERENCES Cattle(CattleId) unique NOT NULL
+)
+GO
+CREATE TABLE SireCalf(
+SireCalfId int identity primary key
+,SireIdNumber int FOREIGN KEY REFERENCES Sire(SireId) NOT NULL
+, CalfIdNumber int FOREIGN KEY REFERENCES Cattle(CattleId) unique NOT NULL
+)
+GO
+
+-- Creating Procedures for Adding Data
+CREATE OR ALTER PROCEDURE AddSection(@sectionName varchar(50), @sectionNumber varchar(15)) AS
+BEGIN
+INSERT INTO RanchSection(SectionName, SectionNumber)
+VALUES (@sectionName, @sectionNumber)
+RETURN @@identity
+END
+
+GO
+CREATE OR ALTER PROCEDURE AddPasture(@acreage int, @pastureUse varchar(20), 
+@sectionId int, @crop varchar(20)=NULL) AS
+BEGIN
+INSERT INTO SectionPasture(Acreage, PastureUse, SectionId, Crop)
+VALUES (@acreage, @pastureUse, @sectionId, @crop)
+RETURN @@identity
+END
+
+GO
+CREATE OR ALTER PROCEDURE AddDam(@CattleId int) AS
+BEGIN
+INSERT INTO Dam(CattleId)
+VALUES (@CattleId)
+RETURN @@identity
+END
+
+GO
+CREATE OR ALTER PROCEDURE AddSire(@CattleId int) AS
+BEGIN
+INSERT INTO Sire(CattleId)
+VALUES (@CattleId)
+RETURN @@identity
+END
+
+GO
+CREATE OR ALTER PROCEDURE AddCattle(
+@registrationNumber varchar(20)
+, @breed varchar(15)
+, @gender varchar(15)
+, @pregnant bit = NULL
+, @dob datetime
+, @birthWeight int
+, @weaningWeight int = NULL
+, @yearlingWeight int = NULL
+, @hipHeight int
+,@targetValue money = NULL
+, @PastureId int) AS
+BEGIN
+INSERT INTO Cattle(RegistrationNumber
+, Breed
+, Gender
+, Pregnant
+, DateOfBirth
+, BirthWeight
+, WeaningWeight
+, YearlingWeight
+, HipHeight
+, TargetValue
+, PastureID)
+VALUES ( 
+@registrationNumber
+, @breed 
+, @gender 
+, @pregnant 
+, @dob 
+, @birthWeight 
+, @weaningWeight  
+, @yearlingWeight 
+, @hipHeight 
+, @targetValue 
+, @PastureId)
+RETURN @@identity
+END
+
+GO
+CREATE OR ALTER PROCEDURE AddDamCalf(@DamId int, @CalfId int) AS
+BEGIN
+INSERT INTO DamCalf(DamIdNumber, CalfIdNumber)
+VALUES (@DamId, @CalfId)
+RETURN @@identity
+END
+
+GO
+CREATE OR ALTER PROCEDURE AddSireCalf(@SireId int, @CalfId int) AS
+BEGIN
+INSERT INTO SireCalf(SireIdNumber, CalfIdNumber)
+VALUES (@SireId, @CalfId)
+RETURN @@identity
+END
+GO
+
+-- Adding data 
+-- Adding Sections 
+-- Syntax: EXEC AddSection 'Section Name', 'Section Number'
+EXEC AddSection 'Davis', '641'
+EXEC AddSection 'Middle Wicks', '648'
+EXEC AddSection 'Canyon', '645'
+
+-- Adding Pastures 
+-- Syntax: EXEC AddPasture 'Acreage', 'Pasture Use', 'SectionId Foreign Key',  'If applicable, list crop'
+EXEC AddPasture '160', 'Farming', '1', 'Wheat'
+EXEC AddPasture '200', 'Cattle', '1' 
+EXEC AddPasture '120', 'CRP', '1'
+-- Etc……..
+
+-- Adding Cattle 
+-- Syntax:  EXEC AddCattle 'Registration Number', 'Breed', 'Gender', 'If cow/ heifer, enter 1 or 0 for pregnant or not respectively', 'Date of Birth', 'Birth Weight', 'Weaning Weight, if applicable', 'Yearling Weight, if applicable', 'Hip Height', 'Target Sale Price, if applicable', 'Actual Sale Price, if applicable', 'Pasture Id'
+EXEC AddCattle '486266', 'Charolais', 'Cow', '1', '2015-03-16', '80', '750', '1150', '50', '6000', '2'
+EXEC AddCattle '384680', 'Charolais', 'Bull', null, '2012-02-22', '125', '850', '1500', '60', null, '13'
+EXEC AddCattle '740980', 'Charolais', 'Steer', null, '2022-03-23', '90', '820', '1400', '55', '15000', '14'
+-- Etc……
+
+-- Adding Dams
+-- Syntax AddDam CattleId
+EXEC AddDam '1'
+EXEC AddDam '5'
+EXEC AddDam '7'
+-- Etc…
+
+-- Adding Sires
+-- Syntax AddSire CattleId
+EXEC AddSire '2'
+EXEC AddSire '6'
+EXEC AddSire '11'
+-- Etc….
+
+-- Adding Dam calves
+-- Syntax: EXEC AddDam DamId, CalfId (refencing CattleId from Cattle table)
+EXEC AddDamCalf '1', '3'
+EXEC AddDamCalf '1', '10'
+EXEC AddDamCalf '2', '19'
+-- Etc…
+
+-- Adding Sire calves
+-- Syntax: EXEC AddSire SireId, CalfId (refencing CattleId from Cattle table)
+EXEC AddSireCalf '2', '3'
+EXEC AddSireCalf '3', '4'
+EXEC AddSireCalf '1', '9'
+-- Etc…..
+
+Querying Data Using SELECT Statements
+-- SELECT statements to answer biz questions  
+
+-- How many animals are in each pasture?
+GO
+CREATE OR ALTER FUNCTION dbo.CattlePastureCount(@PastureId int)
+RETURNS int AS
+BEGIN
+DECLARE @returnValue int
+
+-- Get the count of calves for the entered SireId and assign to returnValue variable. 
+-- PastureId parameter is used in WHERE clause to limit results.
+SELECT @returnValue = COUNT(CattleId) FROM Cattle
+WHERE Cattle.PastureID = @PastureId
+RETURN @returnValue
+END
+GO
+CREATE OR ALTER VIEW CattlePerPasture AS
+SELECT
+PastureId
+, dbo.CattlePastureCount(CattleId) as CattleCount
+FROM Cattle
+GROUP BY PastureID, CattleId
+ORDER BY CattleCount DESC offset 0 rows
+GO
+SELECT * FROM CattlePerPasture
+
+-- Which pastures are resting and which are reserved in conservation programs ('CRP')?
+GO
+CREATE OR ALTER VIEW IdlePastures AS
+SELECT PastureId
+, PastureUse
+FROM SectionPasture
+WHERE PastureUse = 'Resting' OR PastureUse = 'CRP'
+ORDER BY PastureUse offset 0 rows
+GO
+SELECT * FROM IdlePastures
+
+-- For the pastures that have agricultural ('farming') use, what crop do they have?
+GO
+CREATE OR ALTER VIEW FarmingPastures AS
+SELECT PastureId
+, Crop
+FROM SectionPasture
+WHERE PastureUse = 'Farming'
+ORDER BY Crop offset 0 rows
+GO
+SELECT * FROM FarmingPastures
+
+-- Which sires have the most calves?
+GO
+CREATE OR ALTER FUNCTION dbo.SireCalfCount(@SireId int)
+RETURNS int AS
+BEGIN
+DECLARE @returnValue int
+
+-- Get the count of calves for the entered SireId and assign to returnValue variable. 
+-- SireId parameter is used in WHERE clause to limit results.
+SELECT @returnValue = COUNT(SireIdNumber) FROM SireCalf
+WHERE SireCalf.SireIdNumber = @SireId
+RETURN @returnValue
+END
+GO
+
+CREATE OR ALTER VIEW MostVirileSires AS
+SELECT
+SireIdNumber
+, dbo.SireCalfCount(SireIdNumber) as SireCalfCount
+FROM SireCalf
+GROUP BY SireIdNumber
+ORDER BY SireCalfCount DESC offset 0 rows
+GO
+SELECT * FROM MostVirileSires
+
+
